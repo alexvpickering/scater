@@ -154,3 +154,11 @@ setGeneric("numDetectedAcrossCells", function(x, ...) standardGeneric("numDetect
 #' @export
 #' @rdname numDetectedAcrossFeatures
 setGeneric("numDetectedAcrossFeatures", function(x, ...) standardGeneric("numDetectedAcrossFeatures"))
+
+#################################
+# QC weights aggregation-related generics.
+
+#' @export
+#' @rdname weightQCAcrossCells
+setGeneric("weightQCAcrossCells", function(x, ...) standardGeneric("weightQCAcrossCells"))
+

@@ -217,6 +217,33 @@ NULL
     ids
 }
 
+.process_ids_with_groups <- function(x, ids, groups, subset_col, min.cells = 10) {    
+    if (.has_multi_ids(ids)) {
+        ids <- .df_to_factor(ids)
+    } 
+    if (ncol(x)!=length(ids)) {
+        stop("length of 'ids' and 'ncol(x)' are not equal")
+    }
+    if (length(unique(groups)) == 1) {
+        stop("need at least two 'groups'")
+    }
+    
+    tab <- table(ids, groups)
+    keep <- apply(tab, 1, function(row) any(row >= min.cells))
+    keep <- names(keep)[keep]
+    
+    if (!length(keep)) {
+        stop("need at least 'min.cells' in one 'ids' and 'groups' combination")
+    }
+    
+    
+    
+    if (!is.null(subset_col)) {
+        ids[!seq_along(ids) %in% .subset2index(subset_col, x, byrow=FALSE)] <- NA_integer_
+    }
+    ids
+}
+
 #' @importFrom S4Vectors DataFrame
 .create_coldata <- function(original.ids, mapping, freq, store_number) {
     if (.has_multi_ids(original.ids)) {
