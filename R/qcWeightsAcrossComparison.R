@@ -1,11 +1,21 @@
 #' @export
 #' @rdname weightQCAcrossComparison
 #' @examples 
-#' ids <- rep(LETTERS[1:2], times = 1000)
-#' groups <- rep(1:2, each = 1000)
-#' pmito <- c(rnorm(1000, 6.8, 1), rnorm(1000, 7.3, 1))
+#' ids <- rep(LETTERS[1], times = 1000)
+#' groups <- rep(1:2, each = 500)
+#' pmito <- c(rnorm(500, 6.8, 1), rnorm(500, 7.3, 1))
+#' 
+#' # initial difference
+#' mean(pmito[groups == 1]) - mean(pmito[groups == 2])
+#' 
 #' 
 #' qc_weights <- qcWeightsAcrossComparison(pmito, ids, groups)
+#' inds <- indexQCWeights(qc_weights)
+#' pmito_weighted <- pmito[inds]
+#' new.groups <- groups[inds]
+#' 
+#' # new difference
+#' mean(pmito_weighted[new.groups == 1]) - mean(pmito_weighted[new.groups == 2])
 #' 
 qcWeightsAcrossComparison <- function(x, ids, groups, subset=NULL, min.cells=10) 
 {
@@ -95,4 +105,8 @@ qcWeightsAcrossComparison <- function(x, ids, groups, subset=NULL, min.cells=10)
     ids[!ids %in% subset] <- NA_integer_
   }
   ids
+}
+
+indexQCWeights <- function(qc_weights) {
+  seq_along(qc_weights)[sapply(qc_weights, function(p) sample(c(TRUE, FALSE), 1, prob = c(p, 1-p)))]
 }
