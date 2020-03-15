@@ -5,16 +5,9 @@
 #' groups <- rep(1:2, each = 1000)
 #' pmito <- c(rnorm(1000, 6.8, 1), rnorm(1000, 7.3, 1))
 #' 
-#' qc_weight <- weightQCAcrossComparison(pmito, ids, groups)
+#' qc_weights <- qcWeightsAcrossComparison(pmito, ids, groups)
 #' 
-weightQCAcrossComparison <- function(x, ids, groups, subset=NULL, min.cells=10) 
-{
-  .weight_qc_across_comparison(x, ids=ids, groups=groups, subset=subset, min.cells=10)
-}
-
-
-
-.weight_qc_across_comparison <- function(x, ids, groups, subset=NULL, min.cells=10) 
+qcWeightsAcrossComparison <- function(x, ids, groups, subset=NULL, min.cells=10) 
 {
   if (length(unique(groups)) == 1) {
     stop("Need at least two groups")
@@ -29,44 +22,48 @@ weightQCAcrossComparison <- function(x, ids, groups, subset=NULL, min.cells=10)
     x <- x[subset]
   }
   
-  sub.ids <- ids[!lost]
-  sub.groups <- groups[!lost]
+  ids <- ids[!lost]
+  groups <- groups[!lost]
   
-  xl <- lapply(unique(sub.ids), function(id) x[sub.ids == id])
-  groupsl <- lapply(unique(sub.ids), function(id) sub.groups[sub.ids == id])
-  
-  weights <- mapply(FUN =.weight_qc_across_comparison_by_id, xl, groupsl)
-  
-  # unroll weights so that same order as x
-  inds <- unlist(lapply(unique(sub.ids), function(id) seq_along(x)[sub.ids == id]))
-  unlist(weights)[inds]
+  weights <- numeric(length(x))
+  for (id in unique(ids)) {
+    is.id <- ids == id
+    x.id <- x[is.id]
+    groups.id <- groups[is.id]
+    
+    weights[is.id] <- .qc_weights_across_comparison_by_id(x.id, groups.id)
+  }
+  return(weights)
 }
 
-.weight_qc_across_comparison_by_id <- function(x, groups) {
+
+.qc_weights_across_comparison_by_id <- function(x, groups) {
   
   # devide x into quantiles of 5%
   qs <- quantile(x, probs = seq(0, 1, .05))
   xcut <- cut(x, breaks = qs, include.lowest = TRUE)
   
-  # number of observations per group in each quantile
+  # fraction of observations per group in each quantile
   gnames <- unique(groups)
-  tab <- lapply(gnames, function(g) tabulate(xcut[groups == g]))
-  
-  # weights are min observations in bin divided by actual observations
-  mins <- do.call(pmin, tab)
-  wbins <- lapply(tab, function(x) mins/x)
-  names(wbins) <- gnames
-  
-  weights <- lapply(gnames, function(g) {
-    gweights <- xcut[groups == g]
-    levels(gweights) <- wbins[[g]]
-    gweights
+  gfracs <- lapply(gnames, function(g) {
+    is.g <- groups == g
+    tabulate(xcut[is.g]) / sum(is.g)
   })
   
-  # unroll weights so that same order as x
-  inds <- unlist(lapply(gnames, function(g) seq_along(x)[groups == g]))
-  weights <- unlist(weights)[inds]
-  as.numeric(as.character(weights))
+  # weights are min fraction in quantile divided by observed fractions
+  min.fracs <- do.call(pmin, gfracs)
+  bin.weights <- lapply(gfracs, function(fracs) min.fracs/fracs)
+  names(bin.weights) <- gnames
+  
+  # expand quantile weights to each observation
+  weights <- numeric(length(x))
+  for (g in gnames) {
+    is.g <- groups == g
+    gweights <- xcut[is.g]
+    levels(gweights) <- bin.weights[[g]]
+    weights[is.g] <- as.numeric(as.character(gweights))
+  }
+  return(weights)
 }
 
 
